@@ -1,9 +1,13 @@
 import os
 import sys
+import logging
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+# --- ADD LOGGING ---
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+from flask import Flask, send_from_directory, request
 from flask_cors import CORS
 from src.models.user import db
 from src.routes.user import user_bp
@@ -11,7 +15,8 @@ from src.routes.auth import auth_bp
 from src.routes.tasks import tasks_bp
 from src.routes.agent import agent_bp
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+app = Flask(__name__)
+logging.info("Flask App Created")
 
 CORS(app, supports_credentials=True)
 
@@ -19,11 +24,11 @@ app.config['SECRET_KEY'] = 'lynus-ai-agent-secret-key-2024'
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = False
 
-# --- KEY CHANGE: Register API blueprints BEFORE the static file catch-all route ---
 app.register_blueprint(user_bp, url_prefix='/api/users')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(tasks_bp, url_prefix='/api/tasks')
 app.register_blueprint(agent_bp, url_prefix='/api/agent')
+logging.info("Blueprints Registered")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -31,23 +36,28 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    logging.info("Database Initialized")
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    logging.info("Health check endpoint called")
     return {
         'status': 'healthy',
         'service': 'Lynus AI Backend',
         'version': '1.0.0'
     }, 200
 
-# --- This catch-all route should be one of the LAST routes registered ---
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    # API routes are now registered first, so they won't be caught here.
-    static_folder_path = app.static_folder
-    if static_folder_path is None:
-        return "Static folder not configured", 404
+    # --- ADD LOGGING TO SEE WHAT IS BEING CAUGHT ---
+    logging.info(f"Serve static file route caught path: {path}")
+    logging.info(f"Request URL: {request.url}")
+    
+    static_folder_path = os.path.join(os.path.dirname(__file__), 'static')
+    if not os.path.exists(static_folder_path):
+        os.makedirs(static_folder_path)
+        logging.info("Created static folder as it did not exist.")
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -56,15 +66,14 @@ def serve(path):
         if os.path.exists(index_path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
-            # This is a fallback for when no static file is found
+            logging.info("No static file found, returning fallback JSON.")
             return {
                 'message': 'Lynus AI Backend is running. No static index.html found.',
                 'api_docs': '/api/health'
             }, 200
 
 if __name__ == '__main__':
-    if not os.getenv('OPENROUTER_API_KEY'):
-        print("Warning: OPENROUTER_API_KEY environment variable not set")
-        print("You can set it by running: export OPENROUTER_API_KEY=your_api_key")
-
     app.run(host='0.0.0.0', port=5001, debug=True)
+else:
+    # This block runs when Gunicorn starts the app
+    logging.info("Application starting up under Gunicorn")
