@@ -15,29 +15,22 @@ app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'sta
 
 CORS(app, supports_credentials=True)
 
-# ?‰ç”¨?ç½®
 app.config['SECRET_KEY'] = 'lynus-ai-agent-secret-key-2024'
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE'] = False  # ?‹ç™¼?°å?è¨­ç‚ºFalseï¼Œç??¢ç’°å¢ƒè¨­?ºTrue
+app.config['SESSION_COOKIE_SECURE'] = False
 
-# è¨»å??å?
 app.register_blueprint(user_bp, url_prefix='/api/users')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(tasks_bp, url_prefix='/api/tasks')
 app.register_blueprint(agent_bp, url_prefix='/api/agent')
 
-# ?¸æ?åº«é?ç½?
-# ¦b Railway.app ¤W¡A«ØÄ³¨Ï¥Î¥~³¡¼Æ¾Ú®wªA°È¡A¨Ò¦p PostgreSQL ©Î MySQL
-# ³o¸Ì¼È®É¨Ï¥Î SQLite¡A¦ı½Ğª`·N¼Æ¾Ú«ù¤[©Ê°İÃD
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# ?µå»º?¸æ?åº«è¡¨
 with app.app_context():
     db.create_all()
 
-# API?¥åº·æª¢æŸ¥
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return {
@@ -46,7 +39,6 @@ def health_check():
         'version': '1.0.0'
     }, 200
 
-# ?œæ??‡ä»¶?å?
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
@@ -54,7 +46,6 @@ def serve(path):
     if static_folder_path is None:
         return "Static folder not configured", 404
 
-    # Àu¥ıÀË¬d /api/health ¸ô®|¡AÁ×§K»PÀRºA¤å¥ó½Ä¬ğ
     if path == "api/health":
         return health_check()
 
@@ -77,7 +68,6 @@ def serve(path):
             }, 200
 
 if __name__ == '__main__':
-    # è¨­ç½®?°å?è®Šé?ï¼ˆå??œæ??‰ç?è©±ï?
     if not os.getenv('OPENROUTER_API_KEY'):
         print("Warning: OPENROUTER_API_KEY environment variable not set")
         print("You can set it by running: export OPENROUTER_API_KEY=your_api_key")
