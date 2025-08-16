@@ -3,3 +3,4 @@ uvicorn
 flask
 flask-cors
 flask-sqlalchemy
+serverless-wsgi
