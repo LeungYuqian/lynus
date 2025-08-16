@@ -19,6 +19,7 @@ app.config['SECRET_KEY'] = 'lynus-ai-agent-secret-key-2024'
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = False
 
+# --- KEY CHANGE: Register API blueprints BEFORE the static file catch-all route ---
 app.register_blueprint(user_bp, url_prefix='/api/users')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(tasks_bp, url_prefix='/api/tasks')
@@ -39,15 +40,14 @@ def health_check():
         'version': '1.0.0'
     }, 200
 
+# --- This catch-all route should be one of the LAST routes registered ---
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
+    # API routes are now registered first, so they won't be caught here.
     static_folder_path = app.static_folder
     if static_folder_path is None:
         return "Static folder not configured", 404
-
-    if path == "api/health":
-        return health_check()
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -56,15 +56,10 @@ def serve(path):
         if os.path.exists(index_path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
+            # This is a fallback for when no static file is found
             return {
-                'message': 'Lynus AI Backend is running',
-                'api_docs': '/api/health',
-                'endpoints': {
-                    'auth': '/api/auth/*',
-                    'tasks': '/api/tasks/*',
-                    'agent': '/api/agent/*',
-                    'users': '/api/users/*'
-                }
+                'message': 'Lynus AI Backend is running. No static index.html found.',
+                'api_docs': '/api/health'
             }, 200
 
 if __name__ == '__main__':
